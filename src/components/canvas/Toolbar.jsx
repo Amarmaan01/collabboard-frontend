@@ -2,7 +2,8 @@ import { useState, useRef } from "react";
 import {
   Pencil, Eraser, Palette, CircleDot, Undo2, Redo2, Trash2, StickyNote,
   Shapes, Pointer, ImagePlus, Download, Highlighter, Lasso, ZoomIn, ZoomOut,
-  RotateCcw, Hand, ChevronUp, ChevronDown, Plus, Type, PenTool, Minus,
+  Hand, ChevronUp, ChevronDown, Plus, Type, PenTool, Minus,
+  ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 
 const PRESET_COLORS = [
@@ -14,11 +15,11 @@ const PRESET_COLORS = [
 ];
 
 const PEN_TYPES = [
-  { id: "fine", name: "Fine Tip", icon: "·", desc: "Thin precise lines" },
-  { id: "ballpoint", name: "Ballpoint", icon: "●", desc: "Standard pen" },
-  { id: "fountain", name: "Fountain", icon: "✒", desc: "Elegant pressure" },
-  { id: "calligraphy", name: "Calligraphy", icon: "𝒜", desc: "Wide strokes" },
-  { id: "marker", name: "Marker", icon: "■", desc: "Bold & semi-transparent" },
+  { id: "fine", name: "Fine Tip", icon: "\u00b7", desc: "Thin precise lines" },
+  { id: "ballpoint", name: "Ballpoint", icon: "\u25cf", desc: "Standard pen" },
+  { id: "fountain", name: "Fountain", icon: "\u2712", desc: "Elegant pressure" },
+  { id: "calligraphy", name: "Calligraphy", icon: "\ud835\udc9c", desc: "Wide strokes" },
+  { id: "marker", name: "Marker", icon: "\u25a0", desc: "Bold & semi-transparent" },
 ];
 
 const Toolbar = ({
@@ -34,6 +35,7 @@ const Toolbar = ({
   const [showBrush, setShowBrush] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showPenType, setShowPenType] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const fileInputRef = useRef(null);
 
   const closePopups = () => { setShowColors(false); setShowBrush(false); setShowExport(false); setShowPenType(false); };
@@ -41,51 +43,59 @@ const Toolbar = ({
 
   return (
     <>
-      <div className="toolbar-float">
-        {/* Drawing Tools */}
-        <button className={`tool-btn ${tool==="pencil"?"active":""}`} onClick={()=>{setTool("pencil");closePopups();}} title="Pencil (P)"><Pencil size={20} /></button>
-        <button className={`tool-btn ${tool==="highlighter"?"active":""}`} onClick={()=>{setTool("highlighter");closePopups();}} title="Highlighter (H)"><Highlighter size={20} /></button>
-        <button className={`tool-btn ${tool==="eraser"?"active":""}`} onClick={()=>{setTool("eraser");closePopups();}} title="Eraser (E)"><Eraser size={20} /></button>
-        <button className={`tool-btn ${tool==="text"?"active":""}`} onClick={()=>{setTool("text");closePopups();}} title="Text Tool (T)"><Type size={20} /></button>
-        <button className={`tool-btn ${tool==="shape"?"active":""}`} onClick={()=>{setTool("shape");closePopups();}} title="Shape Recognition"><Shapes size={20} /></button>
-        <button className={`tool-btn ${tool==="lasso"?"active":""}`} onClick={()=>{setTool("lasso");closePopups();}} title="Lasso Select (L)"><Lasso size={20} /></button>
-        <button className={`tool-btn ${tool==="pan"?"active":""}`} onClick={()=>{setTool("pan");closePopups();}} title="Pan (Space)"><Hand size={20} /></button>
+      {/* Collapse / Expand toggle */}
+      <button className="toolbar-collapse-btn" onClick={() => { setCollapsed(!collapsed); closePopups(); }}
+        title={collapsed ? "Expand Toolbar" : "Collapse Toolbar"}>
+        {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+      </button>
 
-        <div className="divider" />
+      {!collapsed && (
+        <div className="toolbar-float">
+          {/* Drawing Tools */}
+          <button className={`tool-btn ${tool==="pencil"?"active":""}`} onClick={()=>{setTool("pencil");closePopups();}} title="Pencil (P)"><Pencil size={20} /></button>
+          <button className={`tool-btn ${tool==="highlighter"?"active":""}`} onClick={()=>{setTool("highlighter");closePopups();}} title="Highlighter (H)"><Highlighter size={20} /></button>
+          <button className={`tool-btn ${tool==="eraser"?"active":""}`} onClick={()=>{setTool("eraser");closePopups();}} title="Eraser (E)"><Eraser size={20} /></button>
+          <button className={`tool-btn ${tool==="text"?"active":""}`} onClick={()=>{setTool("text");closePopups();}} title="Text Tool (T)"><Type size={20} /></button>
+          <button className={`tool-btn ${tool==="shape"?"active":""}`} onClick={()=>{setTool("shape");closePopups();}} title="Shape Recognition"><Shapes size={20} /></button>
+          <button className={`tool-btn ${tool==="lasso"?"active":""}`} onClick={()=>{setTool("lasso");closePopups();}} title="Lasso Select (L)"><Lasso size={20} /></button>
+          <button className={`tool-btn ${tool==="pan"?"active":""}`} onClick={()=>{setTool("pan");closePopups();}} title="Pan (Space)"><Hand size={20} /></button>
 
-        {/* Pen Type */}
-        <button className="tool-btn" onClick={()=>{setShowPenType(!showPenType);setShowColors(false);setShowBrush(false);setShowExport(false);}} title="Pen Type">
-          <PenTool size={20} />
-        </button>
+          <div className="divider" />
 
-        {/* Sticky & Laser */}
-        <button className="tool-btn" onClick={()=>{closePopups();if(onAddSticky)onAddSticky();}} title="Add Sticky Note"><StickyNote size={20} /></button>
-        <button className={`tool-btn ${tool==="laser"?"active":""}`} onClick={()=>{setTool("laser");closePopups();}} title="Laser Pointer"><Pointer size={20} /></button>
+          {/* Pen Type */}
+          <button className="tool-btn" onClick={()=>{setShowPenType(!showPenType);setShowColors(false);setShowBrush(false);setShowExport(false);}} title="Pen Type">
+            <PenTool size={20} />
+          </button>
 
-        <div className="divider" />
+          {/* Sticky & Laser */}
+          <button className="tool-btn" onClick={()=>{closePopups();if(onAddSticky)onAddSticky();}} title="Add Sticky Note"><StickyNote size={20} /></button>
+          <button className={`tool-btn ${tool==="laser"?"active":""}`} onClick={()=>{setTool("laser");closePopups();}} title="Laser Pointer"><Pointer size={20} /></button>
 
-        {/* Color & Brush */}
-        <button className="tool-btn color-indicator-btn" onClick={()=>{setShowColors(!showColors);setShowBrush(false);setShowExport(false);setShowPenType(false);}} title="Color">
-          <Palette size={20} />
-          <span className="color-indicator" style={{background:color}} />
-        </button>
-        <button className="tool-btn" onClick={()=>{setShowBrush(!showBrush);setShowColors(false);setShowExport(false);setShowPenType(false);}} title="Brush Size"><CircleDot size={20} /></button>
+          <div className="divider" />
 
-        <div className="divider" />
+          {/* Color & Brush */}
+          <button className="tool-btn color-indicator-btn" onClick={()=>{setShowColors(!showColors);setShowBrush(false);setShowExport(false);setShowPenType(false);}} title="Color">
+            <Palette size={20} />
+            <span className="color-indicator" style={{background:color}} />
+          </button>
+          <button className="tool-btn" onClick={()=>{setShowBrush(!showBrush);setShowColors(false);setShowExport(false);setShowPenType(false);}} title="Brush Size"><CircleDot size={20} /></button>
 
-        {/* Image & Export */}
-        <button className="tool-btn" onClick={()=>{closePopups();fileInputRef.current?.click();}} title="Upload Image"><ImagePlus size={20} /></button>
-        <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={(e)=>{const file=e.target.files?.[0];if(file&&onImageUpload)onImageUpload(file);e.target.value="";}} />
-        <button className="tool-btn" onClick={()=>{setShowExport(!showExport);setShowColors(false);setShowBrush(false);setShowPenType(false);}} title="Export Board"><Download size={20} /></button>
+          <div className="divider" />
 
-        <div className="divider" />
+          {/* Image & Export */}
+          <button className="tool-btn" onClick={()=>{closePopups();fileInputRef.current?.click();}} title="Upload Image"><ImagePlus size={20} /></button>
+          <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={(e)=>{const file=e.target.files?.[0];if(file&&onImageUpload)onImageUpload(file);e.target.value="";}} />
+          <button className="tool-btn" onClick={()=>{setShowExport(!showExport);setShowColors(false);setShowBrush(false);setShowPenType(false);}} title="Export Board"><Download size={20} /></button>
 
-        {/* Undo/Redo */}
-        <button className="tool-btn" onClick={onUndo} disabled={undoDisabled} title="Undo" style={{opacity:undoDisabled?0.3:1}}><Undo2 size={20} /></button>
-        <button className="tool-btn" onClick={onRedo} disabled={redoDisabled} title="Redo" style={{opacity:redoDisabled?0.3:1}}><Redo2 size={20} /></button>
+          <div className="divider" />
 
-        {isHost && (<><div className="divider" /><button className="tool-btn" onClick={onClear} title="Clear Board" style={{color:"var(--error)"}}><Trash2 size={20} /></button></>)}
-      </div>
+          {/* Undo/Redo */}
+          <button className="tool-btn" onClick={onUndo} disabled={undoDisabled} title="Undo" style={{opacity:undoDisabled?0.3:1}}><Undo2 size={20} /></button>
+          <button className="tool-btn" onClick={onRedo} disabled={redoDisabled} title="Redo" style={{opacity:redoDisabled?0.3:1}}><Redo2 size={20} /></button>
+
+          {isHost && (<><div className="divider" /><button className="tool-btn" onClick={onClear} title="Clear Board" style={{color:"var(--error)"}}><Trash2 size={20} /></button></>)}
+        </div>
+      )}
 
       {/* Zoom Controls */}
       <div className="zoom-controls">
@@ -110,7 +120,7 @@ const Toolbar = ({
         </div>
       )}
 
-      {/* Color Picker Popup — Full gradient + presets + native picker */}
+      {/* Color Picker Popup */}
       {showColors && (
         <div className="color-picker-popup premium">
           <div className="color-picker-header">
@@ -194,8 +204,8 @@ const Toolbar = ({
       {/* Export Popup */}
       {showExport && (
         <div className="export-popup">
-          <button className="export-option" onClick={()=>{onExport?.("png");setShowExport(false);}}>📷 Export PNG</button>
-          <button className="export-option" onClick={()=>{onExport?.("pdf");setShowExport(false);}}>📄 Export PDF</button>
+          <button className="export-option" onClick={()=>{onExport?.("png");setShowExport(false);}}>Export PNG</button>
+          <button className="export-option" onClick={()=>{onExport?.("pdf");setShowExport(false);}}>Export PDF</button>
         </div>
       )}
     </>

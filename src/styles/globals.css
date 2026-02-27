@@ -403,8 +403,19 @@ input, textarea, select { font-family: var(--font); }
 .topbar-right { display: flex; align-items: center; gap: 8px; }
 .whiteboard-main { display: flex; flex: 1; overflow: hidden; position: relative; }
 
-.toolbar-float { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); background: var(--bg-glass); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 50; box-shadow: var(--shadow); }
+.toolbar-float { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); background: var(--bg-glass); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 50; box-shadow: var(--shadow); max-height: calc(100vh - 120px); overflow-y: auto; }
 .toolbar-float .divider { height: 1px; background: var(--border-light); margin: 4px 0; }
+
+/* Toolbar collapse/expand button */
+.toolbar-collapse-btn {
+  position: absolute; left: 16px; top: 8px; z-index: 51;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--bg-glass); backdrop-filter: blur(12px);
+  border: 1px solid var(--border); color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: var(--transition);
+}
+.toolbar-collapse-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 .tool-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: transparent; border: none; color: var(--text-secondary); cursor: pointer; transition: var(--transition); }
 .tool-btn:hover { background: var(--bg-hover); color: var(--text-primary); transform: scale(1.05); }
 .tool-btn.active { background: var(--accent-soft); color: var(--accent); box-shadow: 0 0 16px var(--accent-glow); }
@@ -526,6 +537,16 @@ input, textarea, select { font-family: var(--font); }
   padding: 6px 8px; font-family: var(--font); font-size: 16px;
   min-width: 120px; min-height: 32px; resize: both; outline: none;
   box-shadow: 0 0 16px var(--accent-glow);
+}
+
+/* Box text edit overlay (for template boxes) */
+.canvas-box-edit {
+  background: rgba(24, 28, 42, 0.95); color: #e8e8ed;
+  border: 2px solid var(--accent); border-radius: 10px;
+  padding: 4px 8px; font-family: var(--font); font-size: 14px;
+  text-align: center; resize: none; outline: none;
+  box-shadow: 0 0 20px var(--accent-glow);
+  display: flex; align-items: center; justify-content: center;
 }
 
 .canvas-area { flex: 1; position: relative; background: var(--bg-primary); overflow: hidden; }

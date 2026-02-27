@@ -137,6 +137,8 @@ const Canvas = ({
   const dragElementStart = useRef({ x: 0, y: 0 });
   const dragOrigPos = useRef({ x: 0, y: 0 });
   const [editingText, setEditingText] = useState(null);
+  const [editingBox, setEditingBox] = useState(null);
+  const templateGroupDrag = useRef(null); // { prefix, startPos, origPositions: Map<id,{x,y}> }
   const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
 
   const resizeCanvas = useCallback(() => {
@@ -303,10 +305,19 @@ const Canvas = ({
     return null;
   };
 
+  /* ─── Detect template group prefix from an element id ─── */
+  const getTemplatePrefix = (id) => {
+    // Template IDs follow patterns like "kanban-col-0", "fc-start", "mm-center", "swot-0", "retro-col-0"
+    const prefixes = ["kanban", "fc", "mm", "swot", "retro"];
+    for (const p of prefixes) { if (id && id.startsWith(p + "-")) return p; }
+    return null;
+  };
+
   /* ─── Pointer Events ─── */
   const handlePointerDown = (e) => {
     if (disabled||!tool) return; e.preventDefault();
     const {clientX,clientY} = getClientPos(e), pos = screenToCanvas(clientX,clientY);
+    const now = Date.now();
 
     if (tool==="pan") { isDrawing.current=true; dragStart.current={x:clientX-(panOffset?.x||0),y:clientY-(panOffset?.y||0)}; return; }
     if (tool==="laser") { isDrawing.current=true; if(socket) socket.emit("laser:move",{point:pos}); return; }
@@ -315,9 +326,31 @@ const Canvas = ({
       if (selectionBounds&&selectedIds.length>0&&pos.x>=selectionBounds.x-4&&pos.x<=selectionBounds.x+selectionBounds.w+4&&pos.y>=selectionBounds.y-4&&pos.y<=selectionBounds.y+selectionBounds.h+4) { isDraggingSelection.current=true; dragStart.current={x:pos.x,y:pos.y}; isDrawing.current=true; return; }
       setSelectedIds([]); setSelectionBounds(null); lassoPath.current=[pos]; isDrawing.current=true; return;
     }
-    // Hit-test template elements for dragging
+    // Hit-test template elements for dragging or double-click editing
     const hitEl = hitTestTextLayer(pos);
-    if (hitEl&&hitEl.type==="box") { draggingElement.current=hitEl; dragElementStart.current={x:pos.x,y:pos.y}; dragOrigPos.current={x:hitEl.x,y:hitEl.y}; isDrawing.current=true; return; }
+    if (hitEl&&hitEl.type==="box") {
+      // Double-click → edit box text
+      if (hitEl._lastClick && now - hitEl._lastClick < 400) {
+        setEditingBox({ id: hitEl.id, x: hitEl.x, y: hitEl.y, width: hitEl.width||150, height: hitEl.height||60, text: hitEl.text||"" });
+        return;
+      }
+      hitEl._lastClick = now;
+
+      // Check if this belongs to a template group
+      const prefix = getTemplatePrefix(hitEl.id);
+      if (prefix && e.shiftKey) {
+        // Shift+drag = move entire template group
+        const groupEls = textLayer.filter(el => el.id && el.id.startsWith(prefix + "-") && el.type === "box");
+        const origPositions = new Map();
+        groupEls.forEach(el => origPositions.set(el.id, { x: el.x, y: el.y }));
+        templateGroupDrag.current = { prefix, startPos: { x: pos.x, y: pos.y }, origPositions };
+        isDrawing.current = true;
+        return;
+      }
+
+      // Single drag = move individual box
+      draggingElement.current=hitEl; dragElementStart.current={x:pos.x,y:pos.y}; dragOrigPos.current={x:hitEl.x,y:hitEl.y}; isDrawing.current=true; return;
+    }
     // Eraser: stroke removal
     if (tool==="eraser") {
       isDrawing.current=true; eraserPos.current=pos;
@@ -341,6 +374,15 @@ const Canvas = ({
     if (tool==="pan") { if(onPanChange) onPanChange({x:clientX-dragStart.current.x,y:clientY-dragStart.current.y}); return; }
     const pos = screenToCanvas(clientX,clientY);
     if (tool==="laser") { const now=Date.now(); if(now-lastThrottle.current>30){lastThrottle.current=now; if(socket) socket.emit("laser:move",{point:pos});} return; }
+    // Group template drag
+    if (templateGroupDrag.current) {
+      const gd = templateGroupDrag.current;
+      const dx = pos.x - gd.startPos.x, dy = pos.y - gd.startPos.y;
+      gd.origPositions.forEach((orig, id) => {
+        if (onTextLayerUpdate) onTextLayerUpdate(id, { x: orig.x + dx, y: orig.y + dy });
+      });
+      scheduleRedraw(); return;
+    }
     if (tool==="lasso") {
       if (isDraggingSelection.current) { const dx=pos.x-dragStart.current.x,dy=pos.y-dragStart.current.y; dragStart.current={x:pos.x,y:pos.y}; if(onMoveStrokes) onMoveStrokes(selectedIds,dx,dy); if(selectionBounds) setSelectionBounds(b=>b?{...b,x:b.x+dx,y:b.y+dy}:b); return; }
       if (lassoPath.current) { lassoPath.current.push(pos); scheduleRedraw(); } return;
@@ -356,6 +398,7 @@ const Canvas = ({
   const handlePointerUp = (e) => {
     if (disabled) return; e.preventDefault();
     if (draggingElement.current) { draggingElement.current=null; isDrawing.current=false; return; }
+    if (templateGroupDrag.current) { templateGroupDrag.current=null; isDrawing.current=false; return; }
     if (!isDrawing.current) return; isDrawing.current=false;
     if (tool==="pan") return;
     if (tool==="eraser") { eraserPos.current=null; scheduleRedraw(); return; }
@@ -399,6 +442,13 @@ const Canvas = ({
     setEditingText(null);
   };
 
+  const handleBoxTextSubmit = (text) => {
+    if (editingBox && onTextLayerUpdate) {
+      onTextLayerUpdate(editingBox.id, { text: text || "" });
+    }
+    setEditingBox(null);
+  };
+
   const getCursorStyle = () => { if(disabled) return "default"; if(tool==="laser") return "none"; if(tool==="pan") return "grab"; if(tool==="eraser") return "none"; if(tool==="text") return "text"; return "crosshair"; };
 
   const getTextInputStyle = () => {
@@ -420,6 +470,21 @@ const Canvas = ({
             style={{color,fontSize:brushSize*5+12}}
             onBlur={(e)=>handleTextSubmit(e.target.value)}
             onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleTextSubmit(e.target.value);}if(e.key==="Escape")setEditingText(null);}} />
+        </div>
+      )}
+      {editingBox && (
+        <div className="canvas-text-input-wrap" style={{
+          position:"absolute",
+          left: editingBox.x * (zoom||1) + (panOffset?.x||0),
+          top: editingBox.y * (zoom||1) + (panOffset?.y||0),
+          width: editingBox.width * (zoom||1),
+          height: editingBox.height * (zoom||1),
+        }}>
+          <textarea className="canvas-box-edit" autoFocus
+            defaultValue={editingBox.text}
+            style={{width:"100%",height:"100%",fontSize:14*(zoom||1)}}
+            onBlur={(e)=>handleBoxTextSubmit(e.target.value)}
+            onKeyDown={(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleBoxTextSubmit(e.target.value);}if(e.key==="Escape")setEditingBox(null);}} />
         </div>
       )}
     </div>
